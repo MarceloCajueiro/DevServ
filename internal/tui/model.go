@@ -25,17 +25,18 @@ const (
 
 // Model is the main TUI model.
 type Model struct {
-	manager   *process.Manager
-	viewMode  ViewMode
-	selected  int
-	statuses  []process.Status
-	width     int
-	height    int
-	help      help.Model
-	showHelp  bool
-	err       error
-	message   string
-	msgExpiry time.Time
+	manager        *process.Manager
+	viewMode       ViewMode
+	selected       int
+	statuses       []process.Status
+	width          int
+	height         int
+	help           help.Model
+	showHelp       bool
+	err            error
+	message        string
+	msgExpiry      time.Time
+	stateUpdatedAt time.Time
 
 	// Logs view state
 	logsService string
@@ -49,10 +50,11 @@ func NewModel(manager *process.Manager) *Model {
 	h.ShowAll = false
 
 	return &Model{
-		manager:  manager,
-		viewMode: ViewDashboard,
-		statuses: manager.AllStatus(),
-		help:     h,
+		manager:        manager,
+		viewMode:       ViewDashboard,
+		statuses:       manager.AllStatus(),
+		stateUpdatedAt: manager.StateUpdatedAt(),
+		help:           h,
 	}
 }
 
@@ -76,6 +78,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case TickMsg:
+		// Refresh state from file to sync with other instances
+		if err := m.manager.RefreshState(); err == nil {
+			m.stateUpdatedAt = m.manager.StateUpdatedAt()
+		}
 		m.statuses = m.manager.AllStatus()
 		// Clear expired messages
 		if !m.msgExpiry.IsZero() && time.Now().After(m.msgExpiry) {
@@ -282,10 +288,26 @@ func (m *Model) renderDashboard() string {
 		b.WriteString("\n")
 	}
 
-	// Footer with help
+	// Footer with help and state update timestamp
 	b.WriteString("\n")
 	helpLine := HelpStyle.Render("[s]tart [x]stop [r]estart [l]ogs [?]help [q]uit")
+
+	// Show state updated timestamp
+	var stateInfo string
+	if !m.stateUpdatedAt.IsZero() {
+		stateInfo = SubtitleStyle.Render(fmt.Sprintf("State updated: %s", m.stateUpdatedAt.Format("15:04:05")))
+	}
+
+	// Calculate spacing
+	helpWidth := lipgloss.Width(helpLine)
+	stateWidth := lipgloss.Width(stateInfo)
+	spacing := max(0, m.width-helpWidth-stateWidth-2)
+
 	b.WriteString(helpLine)
+	if stateInfo != "" {
+		b.WriteString(strings.Repeat(" ", spacing))
+		b.WriteString(stateInfo)
+	}
 
 	return b.String()
 }

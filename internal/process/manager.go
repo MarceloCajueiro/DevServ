@@ -9,6 +9,7 @@ import (
 
 	"github.com/marcelocajueiro/devserv/internal/config"
 	"github.com/marcelocajueiro/devserv/internal/logs"
+	"github.com/marcelocajueiro/devserv/internal/state"
 )
 
 // Manager orchestrates multiple services.
@@ -17,6 +18,7 @@ type Manager struct {
 	services   map[string]*Service
 	logManager *logs.Manager
 	eventsCh   chan Event
+	state      *state.State
 
 	mu sync.RWMutex
 }
@@ -28,16 +30,29 @@ func NewManager(cfg *config.Config) (*Manager, error) {
 		return nil, fmt.Errorf("failed to create log manager: %w", err)
 	}
 
+	// Load shared state
+	sharedState, err := state.Load()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load state: %w", err)
+	}
+
 	m := &Manager{
 		config:     cfg,
 		services:   make(map[string]*Service),
 		logManager: logManager,
 		eventsCh:   make(chan Event, 100),
+		state:      sharedState,
 	}
 
-	// Initialize services
+	// Initialize services and restore running state from shared state
 	for _, svcCfg := range cfg.Services {
-		m.services[svcCfg.Name] = NewService(svcCfg, m.eventsCh)
+		svc := NewService(svcCfg, m.eventsCh)
+		m.services[svcCfg.Name] = svc
+
+		// Check if this service is already running (from another instance)
+		if svcState := sharedState.Get(svcCfg.Name); svcState != nil {
+			svc.RestoreFromState(svcState.PID, svcState.StartTime, svcState.LogFile)
+		}
 	}
 
 	return m, nil
@@ -79,7 +94,19 @@ func (m *Manager) StartService(ctx context.Context, name string) error {
 		}
 	}
 
-	return svc.Start(ctx, m.logManager)
+	if err := svc.Start(ctx, m.logManager); err != nil {
+		return err
+	}
+
+	// Update shared state
+	status := svc.Status()
+	m.state.SetRunning(name, status.PID, status.Port, status.LogFile)
+	if err := m.state.Save(); err != nil {
+		// Log error but don't fail the start
+		fmt.Printf("Warning: failed to save state: %v\n", err)
+	}
+
+	return nil
 }
 
 // Stop stops the specified services, or all services if none specified.
@@ -125,7 +152,18 @@ func (m *Manager) StopService(ctx context.Context, name string) error {
 		return fmt.Errorf("service not found: %s", name)
 	}
 
-	return svc.Stop(ctx)
+	if err := svc.Stop(ctx); err != nil {
+		return err
+	}
+
+	// Update shared state
+	m.state.SetStopped(name)
+	if err := m.state.Save(); err != nil {
+		// Log error but don't fail the stop
+		fmt.Printf("Warning: failed to save state: %v\n", err)
+	}
+
+	return nil
 }
 
 // Restart restarts the specified services.
@@ -224,6 +262,41 @@ func (m *Manager) GetService(name string) (*Service, bool) {
 // LogManager returns the log manager.
 func (m *Manager) LogManager() *logs.Manager {
 	return m.logManager
+}
+
+// StateUpdatedAt returns when the shared state was last updated.
+func (m *Manager) StateUpdatedAt() time.Time {
+	return m.state.UpdatedAt
+}
+
+// RefreshState reloads the shared state from file.
+// This is useful when another instance might have made changes.
+func (m *Manager) RefreshState() error {
+	newState, err := state.Load()
+	if err != nil {
+		return err
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.state = newState
+
+	// Update service states based on loaded state
+	for name, svc := range m.services {
+		if svcState := newState.Get(name); svcState != nil {
+			// Service is running according to shared state
+			status := svc.Status()
+			if status.State != StateRunning {
+				svc.RestoreFromState(svcState.PID, svcState.StartTime, svcState.LogFile)
+			}
+		} else {
+			// Service is not in shared state, might have been stopped externally
+			// We don't force stop here, just mark as stopped if PID is dead
+		}
+	}
+
+	return nil
 }
 
 // checkPort checks if a port is available.

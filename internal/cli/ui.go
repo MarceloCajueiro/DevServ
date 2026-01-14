@@ -20,6 +20,9 @@ The dashboard provides:
   - Log viewing
   - Resource usage display
 
+Multiple instances can run simultaneously and share the same state
+through a file-based synchronization mechanism.
+
 Keyboard shortcuts:
   s       Start selected service
   x       Stop selected service
@@ -48,6 +51,7 @@ func runUI(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Run TUI with local manager
 	if err := tui.Run(manager); err != nil {
 		return fmt.Errorf("TUI error: %w", err)
 	}

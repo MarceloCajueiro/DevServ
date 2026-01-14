@@ -73,6 +73,20 @@ func NewService(cfg config.Service, eventsCh chan<- Event) *Service {
 	}
 }
 
+// RestoreFromState restores a service state from shared state file.
+// This is used when another instance has started the service.
+func (s *Service) RestoreFromState(pid int, startTime time.Time, logFile string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.pid = pid
+	s.startTime = startTime
+	s.state = StateRunning
+
+	// Note: We can't restore cmd or logWriter for external processes,
+	// but we can track that it's running via PID
+}
+
 // Name returns the service name.
 func (s *Service) Name() string {
 	return s.config.Name

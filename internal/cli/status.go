@@ -72,6 +72,21 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func stateSymbol(state string) string {
+	switch state {
+	case "running":
+		return "●"
+	case "starting":
+		return "◐"
+	case "stopping":
+		return "◑"
+	case "crashed":
+		return "✖"
+	default:
+		return "○"
+	}
+}
+
 func formatDuration(d time.Duration) string {
 	if d < time.Minute {
 		return fmt.Sprintf("%ds", int(d.Seconds()))
