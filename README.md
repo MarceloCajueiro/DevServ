@@ -4,8 +4,6 @@
 
 DevServ simplifies managing your local development stack with an interactive TUI dashboard, structured logging, and intelligent process management.
 
-![DevServ Dashboard](docs/assets/dashboard.png)
-
 ## Features
 
 - **Interactive Dashboard** - Real-time service status, CPU, memory, uptime
