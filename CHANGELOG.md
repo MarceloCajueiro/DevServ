@@ -7,26 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-01-14
+
 ### Added
-- Initial release
 - TOML-based configuration (`devserv.toml`)
 - CLI commands: `start`, `stop`, `restart`, `status`, `logs`, `ui`, `init`, `version`
 - Interactive TUI dashboard with Bubble Tea
-- Process management with graceful shutdown
+- Process management with graceful shutdown (SIGTERM → SIGKILL)
 - Port conflict detection before starting services
 - Structured JSON logging with per-session log files
 - Log organization by service/date/time
+- Log filtering by pattern and stream
 - Keyboard shortcuts for all operations
-- Documentation: README, getting-started, configuration, cli-reference, tui-guide, architecture, contributing
-
-### Features
-- Start/stop/restart individual or all services
-- Real-time status monitoring in TUI
-- Service status indicators (running, starting, stopping, crashed, stopped)
-- PID, port, and uptime display
-- Log viewing and tailing
 - Force kill option for unresponsive services
+- Comprehensive test suite (unit, integration, E2E)
 
-## [0.1.0] - TBD
-
-- Initial public release
+### Documentation
+- README with quick start guide
+- Getting started tutorial
+- Configuration reference
+- CLI command reference
+- TUI guide with keyboard shortcuts
+- Architecture overview
+- Contributing guide
