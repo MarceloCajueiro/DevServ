@@ -80,7 +80,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case TickMsg:
 		// Refresh state from file to sync with other instances
 		if err := m.manager.RefreshState(); err == nil {
-			m.stateUpdatedAt = m.manager.StateUpdatedAt()
+			m.stateUpdatedAt = time.Now() // Track when we last synced
 		}
 		m.statuses = m.manager.AllStatus()
 		// Clear expired messages
@@ -292,10 +292,10 @@ func (m *Model) renderDashboard() string {
 	b.WriteString("\n")
 	helpLine := HelpStyle.Render("[s]tart [x]stop [r]estart [l]ogs [?]help [q]uit")
 
-	// Show state updated timestamp
+	// Show last sync timestamp
 	var stateInfo string
 	if !m.stateUpdatedAt.IsZero() {
-		stateInfo = SubtitleStyle.Render(fmt.Sprintf("State updated: %s", m.stateUpdatedAt.Format("15:04:05")))
+		stateInfo = SubtitleStyle.Render(fmt.Sprintf("Synced: %s", m.stateUpdatedAt.Format("15:04:05")))
 	}
 
 	// Calculate spacing
