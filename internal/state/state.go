@@ -10,18 +10,31 @@ import (
 	"time"
 )
 
+// statePathOverride allows tests to use a custom state file path.
+var statePathOverride string
+
+// SetStatePath sets a custom path for the state file (for testing).
+func SetStatePath(path string) {
+	statePathOverride = path
+}
+
 // StatePath returns the path to the state file.
 func StatePath() string {
+	if statePathOverride != "" {
+		return statePathOverride
+	}
 	return filepath.Join(os.Getenv("HOME"), ".devserv", "state.json")
 }
 
 // ServiceState represents the state of a single service.
 type ServiceState struct {
 	Name      string    `json:"name"`
-	PID       int       `json:"pid"`
+	Status    string    `json:"status"` // "running", "stopped", "crashed"
+	PID       int       `json:"pid,omitempty"`
 	Port      int       `json:"port,omitempty"`
-	StartTime time.Time `json:"start_time"`
+	StartTime time.Time `json:"start_time,omitempty"`
 	LogFile   string    `json:"log_file,omitempty"`
+	Error     string    `json:"error,omitempty"`
 }
 
 // State represents the shared state of all services.
@@ -57,9 +70,6 @@ func Load() (*State, error) {
 	if state.Services == nil {
 		state.Services = make(map[string]*ServiceState)
 	}
-
-	// Clean up dead processes
-	state.cleanDead()
 
 	return &state, nil
 }
@@ -110,6 +120,7 @@ func (s *State) Save() error {
 func (s *State) SetRunning(name string, pid, port int, logFile string) {
 	s.Services[name] = &ServiceState{
 		Name:      name,
+		Status:    "running",
 		PID:       pid,
 		Port:      port,
 		StartTime: time.Now(),
@@ -117,30 +128,36 @@ func (s *State) SetRunning(name string, pid, port int, logFile string) {
 	}
 }
 
-// SetStopped removes a service from the running state.
+// SetStopped marks a service as stopped.
 func (s *State) SetStopped(name string) {
-	delete(s.Services, name)
+	s.Services[name] = &ServiceState{
+		Name:   name,
+		Status: "stopped",
+	}
 }
 
-// Get returns the state of a service, or nil if not running.
+// SetCrashed marks a service as crashed.
+func (s *State) SetCrashed(name string, err string) {
+	s.Services[name] = &ServiceState{
+		Name:   name,
+		Status: "crashed",
+		Error:  err,
+	}
+}
+
+// Get returns the state of a service, or nil if not found.
 func (s *State) Get(name string) *ServiceState {
 	svc, ok := s.Services[name]
 	if !ok {
 		return nil
 	}
-
-	// Verify process is still alive
-	if !isProcessAlive(svc.PID) {
-		delete(s.Services, name)
-		return nil
-	}
-
 	return svc
 }
 
 // IsRunning checks if a service is running.
 func (s *State) IsRunning(name string) bool {
-	return s.Get(name) != nil
+	svc := s.Get(name)
+	return svc != nil && svc.Status == "running"
 }
 
 // GetPID returns the PID of a running service, or 0 if not running.
@@ -154,22 +171,13 @@ func (s *State) GetPID(name string) int {
 
 // AllRunning returns all currently running services.
 func (s *State) AllRunning() []*ServiceState {
-	s.cleanDead()
-
 	result := make([]*ServiceState, 0, len(s.Services))
 	for _, svc := range s.Services {
-		result = append(result, svc)
-	}
-	return result
-}
-
-// cleanDead removes entries for processes that are no longer running.
-func (s *State) cleanDead() {
-	for name, svc := range s.Services {
-		if !isProcessAlive(svc.PID) {
-			delete(s.Services, name)
+		if svc.Status == "running" {
+			result = append(result, svc)
 		}
 	}
+	return result
 }
 
 // isProcessAlive checks if a process with the given PID exists.

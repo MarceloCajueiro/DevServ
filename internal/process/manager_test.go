@@ -3,13 +3,25 @@ package process
 import (
 	"context"
 	"net"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/marcelocajueiro/devserv/internal/config"
+	"github.com/marcelocajueiro/devserv/internal/state"
 )
 
+func setupTestState(t *testing.T) {
+	// Use a temp directory for state file during tests
+	tmpDir := t.TempDir()
+	state.SetStatePath(filepath.Join(tmpDir, "state.json"))
+	t.Cleanup(func() {
+		state.SetStatePath("")
+	})
+}
+
 func TestManagerStartStop(t *testing.T) {
+	setupTestState(t)
 	cfg := &config.Config{
 		Services: []config.Service{
 			{Name: "svc1", Command: "sleep 60"},
@@ -60,6 +72,7 @@ func TestManagerStartStop(t *testing.T) {
 }
 
 func TestManagerStartSpecific(t *testing.T) {
+	setupTestState(t)
 	cfg := &config.Config{
 		Services: []config.Service{
 			{Name: "svc1", Command: "sleep 60"},
@@ -102,6 +115,7 @@ func TestManagerStartSpecific(t *testing.T) {
 }
 
 func TestManagerRestart(t *testing.T) {
+	setupTestState(t)
 	cfg := &config.Config{
 		Services: []config.Service{
 			{Name: "svc1", Command: "sleep 60"},
@@ -146,6 +160,7 @@ func TestManagerRestart(t *testing.T) {
 }
 
 func TestManagerPortConflict(t *testing.T) {
+	setupTestState(t)
 	// Occupy a port
 	listener, err := net.Listen("tcp", ":18080")
 	if err != nil {
@@ -178,6 +193,7 @@ func TestManagerPortConflict(t *testing.T) {
 }
 
 func TestManagerServiceNotFound(t *testing.T) {
+	setupTestState(t)
 	cfg := &config.Config{
 		Services: []config.Service{
 			{Name: "svc1", Command: "sleep 60"},
@@ -211,6 +227,7 @@ func TestManagerServiceNotFound(t *testing.T) {
 }
 
 func TestManagerKill(t *testing.T) {
+	setupTestState(t)
 	cfg := &config.Config{
 		Services: []config.Service{
 			{Name: "stubborn", Command: "sh -c 'trap \"\" TERM; sleep 60'"},
@@ -245,6 +262,7 @@ func TestManagerKill(t *testing.T) {
 }
 
 func TestManagerServiceNames(t *testing.T) {
+	setupTestState(t)
 	cfg := &config.Config{
 		Services: []config.Service{
 			{Name: "api", Command: "sleep 1"},
@@ -272,6 +290,7 @@ func TestManagerServiceNames(t *testing.T) {
 }
 
 func TestManagerEvents(t *testing.T) {
+	setupTestState(t)
 	cfg := &config.Config{
 		Services: []config.Service{
 			{Name: "svc1", Command: "sleep 60"},
@@ -308,6 +327,7 @@ func TestManagerEvents(t *testing.T) {
 }
 
 func TestManagerGetService(t *testing.T) {
+	setupTestState(t)
 	cfg := &config.Config{
 		Services: []config.Service{
 			{Name: "api", Command: "sleep 1"},

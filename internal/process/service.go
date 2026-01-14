@@ -93,10 +93,25 @@ func (s *Service) MarkAsStopped() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Only mark as stopped if we think it's running but don't own the process
-	if s.state == StateRunning && s.cmd == nil {
+	// Only update if we don't own the process
+	if s.cmd == nil {
 		s.state = StateStopped
 		s.pid = 0
+		s.error = ""
+	}
+}
+
+// MarkAsCrashed marks the service as crashed.
+// This is used when another instance detected a crash.
+func (s *Service) MarkAsCrashed(errMsg string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Only update if we don't own the process
+	if s.cmd == nil {
+		s.state = StateCrashed
+		s.pid = 0
+		s.error = errMsg
 	}
 }
 

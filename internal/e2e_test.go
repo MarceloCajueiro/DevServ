@@ -11,11 +11,22 @@ import (
 	"github.com/marcelocajueiro/devserv/internal/config"
 	"github.com/marcelocajueiro/devserv/internal/logs"
 	"github.com/marcelocajueiro/devserv/internal/process"
+	"github.com/marcelocajueiro/devserv/internal/state"
 )
+
+// setupTestState sets up a temp state file for tests
+func setupTestState(t *testing.T) {
+	tmpDir := t.TempDir()
+	state.SetStatePath(filepath.Join(tmpDir, "state.json"))
+	t.Cleanup(func() {
+		state.SetStatePath("")
+	})
+}
 
 // E2E tests - full flow without mocks
 
 func TestE2EFullFlow(t *testing.T) {
+	setupTestState(t)
 	// This test runs the complete flow:
 	// 1. Load config
 	// 2. Start services
@@ -159,6 +170,7 @@ command = "` + counterScript + `"
 }
 
 func TestE2EServiceCrashAndRestart(t *testing.T) {
+	setupTestState(t)
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "devserv.toml")
 	logDir := filepath.Join(tmpDir, "logs")
@@ -216,6 +228,7 @@ command = "sh -c 'echo starting; exit 1'"
 }
 
 func TestE2EMultipleRestarts(t *testing.T) {
+	setupTestState(t)
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "devserv.toml")
 	logDir := filepath.Join(tmpDir, "logs")
@@ -291,6 +304,7 @@ command = "sh -c 'echo run started; sleep 10'"
 }
 
 func TestE2ELogFiltering(t *testing.T) {
+	setupTestState(t)
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "devserv.toml")
 	logDir := filepath.Join(tmpDir, "logs")
@@ -381,6 +395,7 @@ command = "` + loggerScript + `"
 }
 
 func TestE2EGracefulShutdownTimeout(t *testing.T) {
+	setupTestState(t)
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "devserv.toml")
 	logDir := filepath.Join(tmpDir, "logs")

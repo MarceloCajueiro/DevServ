@@ -71,8 +71,15 @@ func (m *Manager) watchEvents() {
 	for event := range m.stateEventsCh {
 		// Update shared state when service stops or crashes
 		switch event.Type {
-		case EventStopped, EventCrashed:
+		case EventStopped:
 			m.state.SetStopped(event.Service)
+			m.state.Save() // Ignore error, best effort
+		case EventCrashed:
+			errMsg := ""
+			if event.Data != nil {
+				errMsg = fmt.Sprintf("%v", event.Data)
+			}
+			m.state.SetCrashed(event.Service, errMsg)
 			m.state.Save() // Ignore error, best effort
 		}
 
@@ -311,14 +318,23 @@ func (m *Manager) RefreshState() error {
 
 	// Update service states based on loaded state
 	for name, svc := range m.services {
-		if svcState := newState.Get(name); svcState != nil {
+		svcState := newState.Get(name)
+		if svcState == nil {
+			// Service is not in shared state - mark as stopped if we don't own the process
+			svc.MarkAsStopped()
+			continue
+		}
+
+		switch svcState.Status {
+		case "running":
 			// Service is running according to shared state
 			status := svc.Status()
 			if status.State != StateRunning {
 				svc.RestoreFromState(svcState.PID, svcState.StartTime, svcState.LogFile)
 			}
-		} else {
-			// Service is not in shared state - mark as stopped if we don't own the process
+		case "crashed":
+			svc.MarkAsCrashed(svcState.Error)
+		case "stopped":
 			svc.MarkAsStopped()
 		}
 	}
