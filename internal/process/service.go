@@ -199,6 +199,9 @@ func (s *Service) Start(ctx context.Context, logManager *logs.Manager) error {
 		cmd.Dir = dir
 	}
 
+	// Create a new process group so we can kill all child processes
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
 	// Set up pipes for stdout/stderr
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -263,16 +266,18 @@ func (s *Service) Stop(ctx context.Context) error {
 	s.state = StateStopping
 	cmd := s.cmd
 	done := s.done
+	pid := s.pid
 	s.mu.Unlock()
 
 	if cmd == nil || cmd.Process == nil {
 		return nil
 	}
 
-	// Send SIGTERM
-	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
+	// Send SIGTERM to the process group (negative PID)
+	// This kills all child processes as well
+	if err := syscall.Kill(-pid, syscall.SIGTERM); err != nil {
 		// Process might have already exited
-		if err.Error() != "os: process already finished" {
+		if err != syscall.ESRCH {
 			return fmt.Errorf("failed to send SIGTERM: %w", err)
 		}
 	}
@@ -282,9 +287,9 @@ func (s *Service) Stop(ctx context.Context) error {
 	case <-done:
 		return nil
 	case <-ctx.Done():
-		// Force kill
-		if err := cmd.Process.Signal(syscall.SIGKILL); err != nil {
-			if err.Error() != "os: process already finished" {
+		// Force kill the process group
+		if err := syscall.Kill(-pid, syscall.SIGKILL); err != nil {
+			if err != syscall.ESRCH {
 				return fmt.Errorf("failed to send SIGKILL: %w", err)
 			}
 		}
@@ -297,13 +302,15 @@ func (s *Service) Stop(ctx context.Context) error {
 func (s *Service) Kill() error {
 	s.mu.RLock()
 	cmd := s.cmd
+	pid := s.pid
 	s.mu.RUnlock()
 
-	if cmd == nil || cmd.Process == nil {
+	if cmd == nil || cmd.Process == nil || pid <= 0 {
 		return nil
 	}
 
-	return cmd.Process.Signal(syscall.SIGKILL)
+	// Kill the entire process group
+	return syscall.Kill(-pid, syscall.SIGKILL)
 }
 
 func (s *Service) captureOutput(r io.Reader, stream string, logWriter *logs.Writer) {
