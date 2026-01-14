@@ -87,6 +87,19 @@ func (s *Service) RestoreFromState(pid int, startTime time.Time, logFile string)
 	// but we can track that it's running via PID
 }
 
+// MarkAsStopped marks the service as stopped.
+// This is used when another instance has stopped the service.
+func (s *Service) MarkAsStopped() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Only mark as stopped if we think it's running but don't own the process
+	if s.state == StateRunning && s.cmd == nil {
+		s.state = StateStopped
+		s.pid = 0
+	}
+}
+
 // Name returns the service name.
 func (s *Service) Name() string {
 	return s.config.Name

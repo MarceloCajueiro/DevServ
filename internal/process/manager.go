@@ -318,8 +318,8 @@ func (m *Manager) RefreshState() error {
 				svc.RestoreFromState(svcState.PID, svcState.StartTime, svcState.LogFile)
 			}
 		} else {
-			// Service is not in shared state, might have been stopped externally
-			// We don't force stop here, just mark as stopped if PID is dead
+			// Service is not in shared state - mark as stopped if we don't own the process
+			svc.MarkAsStopped()
 		}
 	}
 
