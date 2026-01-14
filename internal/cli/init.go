@@ -23,7 +23,7 @@ Examples:
 }
 
 const exampleConfig = `# DevServ Configuration
-# https://github.com/marcelomd/devserv
+# https://github.com/MarceloCajueiro/DevServ
 
 # Define your services below. Each service needs at least a name and command.
 # Optional: directory (working directory), port (for port conflict detection)

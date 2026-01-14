@@ -13,8 +13,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/marcelomd/devserv/internal/config"
-	"github.com/marcelomd/devserv/internal/logs"
+	"github.com/MarceloCajueiro/DevServ/internal/config"
+	"github.com/MarceloCajueiro/DevServ/internal/logs"
 )
 
 // Service represents a managed process.

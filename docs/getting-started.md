@@ -12,13 +12,13 @@ This guide will walk you through setting up DevServ to manage your local develop
 ### Option 1: Go Install (Recommended)
 
 ```bash
-go install github.com/marcelomd/devserv@latest
+go install github.com/MarceloCajueiro/DevServ@latest
 ```
 
 ### Option 2: Build from Source
 
 ```bash
-git clone https://github.com/marcelomd/devserv.git
+git clone https://github.com/MarceloCajueiro/DevServ.git
 cd devserv
 go build -o devserv ./cmd/devserv
 

@@ -11,7 +11,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/marcelomd/devserv/internal/process"
+	"github.com/MarceloCajueiro/DevServ/internal/process"
 )
 
 // ViewMode represents the current view.

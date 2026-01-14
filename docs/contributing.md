@@ -13,7 +13,7 @@ Thank you for your interest in contributing to DevServ! This guide will help you
 ### Clone and Build
 
 ```bash
-git clone https://github.com/marcelomd/devserv.git
+git clone https://github.com/MarceloCajueiro/DevServ.git
 cd devserv
 go mod download
 go build -o devserv ./cmd/devserv

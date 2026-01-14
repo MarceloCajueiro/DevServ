@@ -1,5 +1,5 @@
 # DevServ Configuration Example
-# https://github.com/marcelomd/devserv
+# https://github.com/MarceloCajueiro/DevServ
 #
 # Copy this file to devserv.toml and customize for your project.
 # Run 'devserv init' to generate a fresh config file.

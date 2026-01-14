@@ -5,7 +5,7 @@ BINARY_NAME=devserv
 VERSION=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 GIT_COMMIT=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
-LDFLAGS=-ldflags "-X github.com/marcelomd/devserv/internal/cli.Version=$(VERSION) -X github.com/marcelomd/devserv/internal/cli.GitCommit=$(GIT_COMMIT) -X github.com/marcelomd/devserv/internal/cli.BuildDate=$(BUILD_DATE)"
+LDFLAGS=-ldflags "-X github.com/MarceloCajueiro/DevServ/internal/cli.Version=$(VERSION) -X github.com/MarceloCajueiro/DevServ/internal/cli.GitCommit=$(GIT_COMMIT) -X github.com/MarceloCajueiro/DevServ/internal/cli.BuildDate=$(BUILD_DATE)"
 
 # Default target
 all: build

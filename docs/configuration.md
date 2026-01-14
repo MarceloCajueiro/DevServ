@@ -84,7 +84,7 @@ port = 8080
 
 ```toml
 # DevServ Configuration
-# https://github.com/marcelomd/devserv
+# https://github.com/MarceloCajueiro/DevServ
 
 # Go API Backend
 [[services]]

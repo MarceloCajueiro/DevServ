@@ -7,7 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/marcelomd/devserv/internal/process"
+	"github.com/MarceloCajueiro/DevServ/internal/process"
 )
 
 // Run starts the TUI application.
