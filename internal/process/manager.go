@@ -14,11 +14,12 @@ import (
 
 // Manager orchestrates multiple services.
 type Manager struct {
-	config     *config.Config
-	services   map[string]*Service
-	logManager *logs.Manager
-	eventsCh   chan Event
-	state      *state.State
+	config        *config.Config
+	services      map[string]*Service
+	logManager    *logs.Manager
+	eventsCh      chan Event
+	stateEventsCh chan Event // Internal channel for state updates
+	state         *state.State
 
 	mu sync.RWMutex
 }
@@ -36,17 +37,20 @@ func NewManager(cfg *config.Config) (*Manager, error) {
 		return nil, fmt.Errorf("failed to load state: %w", err)
 	}
 
+	stateEventsCh := make(chan Event, 100)
+
 	m := &Manager{
-		config:     cfg,
-		services:   make(map[string]*Service),
-		logManager: logManager,
-		eventsCh:   make(chan Event, 100),
-		state:      sharedState,
+		config:        cfg,
+		services:      make(map[string]*Service),
+		logManager:    logManager,
+		eventsCh:      make(chan Event, 100),
+		stateEventsCh: stateEventsCh,
+		state:         sharedState,
 	}
 
 	// Initialize services and restore running state from shared state
 	for _, svcCfg := range cfg.Services {
-		svc := NewService(svcCfg, m.eventsCh)
+		svc := NewService(svcCfg, stateEventsCh)
 		m.services[svcCfg.Name] = svc
 
 		// Check if this service is already running (from another instance)
@@ -55,7 +59,30 @@ func NewManager(cfg *config.Config) (*Manager, error) {
 		}
 	}
 
+	// Start background goroutine to update state on service events
+	go m.watchEvents()
+
 	return m, nil
+}
+
+// watchEvents listens for service events and updates shared state accordingly.
+// It also forwards events to the public eventsCh for TUI consumption.
+func (m *Manager) watchEvents() {
+	for event := range m.stateEventsCh {
+		// Update shared state when service stops or crashes
+		switch event.Type {
+		case EventStopped, EventCrashed:
+			m.state.SetStopped(event.Service)
+			m.state.Save() // Ignore error, best effort
+		}
+
+		// Forward event to public channel for TUI
+		select {
+		case m.eventsCh <- event:
+		default:
+			// Don't block if channel is full
+		}
+	}
 }
 
 // Start starts the specified services, or all services if none specified.
