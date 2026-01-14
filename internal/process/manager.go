@@ -48,14 +48,37 @@ func NewManager(cfg *config.Config) (*Manager, error) {
 		state:         sharedState,
 	}
 
-	// Initialize services and restore running state from shared state
+	// Initialize services and restore state from shared state file
 	for _, svcCfg := range cfg.Services {
 		svc := NewService(svcCfg, stateEventsCh)
 		m.services[svcCfg.Name] = svc
 
-		// Check if this service is already running (from another instance)
-		if svcState := sharedState.Get(svcCfg.Name); svcState != nil {
-			svc.RestoreFromState(svcState.PID, svcState.StartTime, svcState.LogFile)
+		// Restore state from shared state file
+		svcState := sharedState.Get(svcCfg.Name)
+		if svcState == nil {
+			// No state in file - mark as stopped (not unknown)
+			svc.MarkAsStopped()
+			continue
+		}
+
+		switch svcState.Status {
+		case "running":
+			// Verify process is actually alive before restoring running state
+			if state.IsProcessAlive(svcState.PID) {
+				svc.RestoreFromState(svcState.PID, svcState.StartTime, svcState.LogFile)
+			} else {
+				// Process died but state wasn't updated - mark as stopped
+				svc.MarkAsStopped()
+				// Update shared state to reflect reality
+				sharedState.SetStopped(svcCfg.Name)
+				sharedState.Save() // Best effort, ignore error
+			}
+		case "crashed":
+			svc.MarkAsCrashed(svcState.Error)
+		case "stopped":
+			svc.MarkAsStopped()
+		default:
+			svc.MarkAsStopped()
 		}
 	}
 
@@ -327,10 +350,19 @@ func (m *Manager) RefreshState() error {
 
 		switch svcState.Status {
 		case "running":
-			// Service is running according to shared state
-			status := svc.Status()
-			if status.State != StateRunning {
-				svc.RestoreFromState(svcState.PID, svcState.StartTime, svcState.LogFile)
+			// Verify process is actually alive before restoring running state
+			if state.IsProcessAlive(svcState.PID) {
+				// Service is running according to shared state
+				status := svc.Status()
+				if status.State != StateRunning {
+					svc.RestoreFromState(svcState.PID, svcState.StartTime, svcState.LogFile)
+				}
+			} else {
+				// Process died but state wasn't updated - mark as stopped
+				svc.MarkAsStopped()
+				// Update shared state to reflect reality
+				newState.SetStopped(name)
+				newState.Save() // Best effort, ignore error
 			}
 		case "crashed":
 			svc.MarkAsCrashed(svcState.Error)

@@ -68,7 +68,7 @@ const (
 func NewService(cfg config.Service, eventsCh chan<- Event) *Service {
 	return &Service{
 		config:   cfg,
-		state:    StateStopped,
+		state:    StateUnknown,
 		eventsCh: eventsCh,
 	}
 }

@@ -5,8 +5,10 @@ package process
 type State int
 
 const (
+	// StateUnknown indicates the service state is not yet known (initial state).
+	StateUnknown State = iota
 	// StateStopped indicates the service is not running.
-	StateStopped State = iota
+	StateStopped
 	// StateStarting indicates the service is being started.
 	StateStarting
 	// StateRunning indicates the service is running.
@@ -20,6 +22,8 @@ const (
 // String returns the string representation of the state.
 func (s State) String() string {
 	switch s {
+	case StateUnknown:
+		return "loading"
 	case StateStopped:
 		return "stopped"
 	case StateStarting:
@@ -38,6 +42,8 @@ func (s State) String() string {
 // Symbol returns a visual symbol for the state.
 func (s State) Symbol() string {
 	switch s {
+	case StateUnknown:
+		return "◌"
 	case StateStopped:
 		return "○"
 	case StateStarting:
@@ -62,6 +68,8 @@ func (s State) Color() string {
 		return "yellow"
 	case StateCrashed:
 		return "red"
+	case StateUnknown:
+		return "blue"
 	default:
 		return "gray"
 	}

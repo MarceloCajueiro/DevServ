@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-01-14
+
+### Added
+- Initial "loading" state for services before state synchronization completes
+
+### Fixed
+- Verify process liveness when restoring "running" state from state file
+- Services no longer briefly show as "running" on startup if process is dead
+- Stale state files from crashed instances are automatically cleaned up
+
 ## [0.2.0] - 2026-01-14
 
 ### Added
@@ -17,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Service crash/stop state now properly propagates to all running instances
 - State synchronization between instances updates every second
+- Child processes (e.g., `uv run python ...`) now properly killed using process groups
 
 ## [0.1.0] - 2026-01-14
 

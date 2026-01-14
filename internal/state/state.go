@@ -180,8 +180,8 @@ func (s *State) AllRunning() []*ServiceState {
 	return result
 }
 
-// isProcessAlive checks if a process with the given PID exists.
-func isProcessAlive(pid int) bool {
+// IsProcessAlive checks if a process with the given PID exists.
+func IsProcessAlive(pid int) bool {
 	if pid <= 0 {
 		return false
 	}
