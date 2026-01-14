@@ -17,7 +17,7 @@ DevServ simplifies managing your local development stack with an interactive TUI
 
 ```bash
 # Install
-go install github.com/MarceloCajueiro/DevServ/cmd/devserv@latest
+go install github.com/marcelocajueiro/devserv/cmd/devserv@latest
 
 # Create config
 devserv init
@@ -171,13 +171,13 @@ devserv logs api -f       # Follow (tail) logs
 ### From Source
 
 ```bash
-go install github.com/MarceloCajueiro/DevServ/cmd/devserv@latest
+go install github.com/marcelocajueiro/devserv/cmd/devserv@latest
 ```
 
 ### Build from Repository
 
 ```bash
-git clone https://github.com/MarceloCajueiro/DevServ.git
+git clone https://github.com/marcelocajueiro/devserv.git
 cd devserv
 go build -o devserv ./cmd/devserv
 ```

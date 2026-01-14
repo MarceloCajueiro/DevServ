@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/MarceloCajueiro/DevServ/internal/config"
+	"github.com/marcelocajueiro/devserv/internal/config"
 )
 
 var (

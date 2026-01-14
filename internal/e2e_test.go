@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MarceloCajueiro/DevServ/internal/config"
-	"github.com/MarceloCajueiro/DevServ/internal/logs"
-	"github.com/MarceloCajueiro/DevServ/internal/process"
+	"github.com/marcelocajueiro/devserv/internal/config"
+	"github.com/marcelocajueiro/devserv/internal/logs"
+	"github.com/marcelocajueiro/devserv/internal/process"
 )
 
 // E2E tests - full flow without mocks

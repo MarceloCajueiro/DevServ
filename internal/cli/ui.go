@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/MarceloCajueiro/DevServ/internal/process"
-	"github.com/MarceloCajueiro/DevServ/internal/tui"
+	"github.com/marcelocajueiro/devserv/internal/process"
+	"github.com/marcelocajueiro/devserv/internal/tui"
 )
 
 var uiCmd = &cobra.Command{

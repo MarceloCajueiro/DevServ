@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/MarceloCajueiro/DevServ/internal/process"
+	"github.com/marcelocajueiro/devserv/internal/process"
 )
 
 var statusCmd = &cobra.Command{

@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/MarceloCajueiro/DevServ/internal/config"
-	"github.com/MarceloCajueiro/DevServ/internal/process"
+	"github.com/marcelocajueiro/devserv/internal/config"
+	"github.com/marcelocajueiro/devserv/internal/process"
 )
 
 var stopCmd = &cobra.Command{

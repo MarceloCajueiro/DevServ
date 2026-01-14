@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/MarceloCajueiro/DevServ/internal/config"
-	"github.com/MarceloCajueiro/DevServ/internal/logs"
+	"github.com/marcelocajueiro/devserv/internal/config"
+	"github.com/marcelocajueiro/devserv/internal/logs"
 )
 
 // Manager orchestrates multiple services.

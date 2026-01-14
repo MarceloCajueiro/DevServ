@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MarceloCajueiro/DevServ/internal/config"
+	"github.com/marcelocajueiro/devserv/internal/config"
 )
 
 func TestManagerStartStop(t *testing.T) {

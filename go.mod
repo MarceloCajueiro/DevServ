@@ -1,4 +1,4 @@
-module github.com/MarceloCajueiro/DevServ
+module github.com/marcelocajueiro/devserv
 
 go 1.25.5
 
