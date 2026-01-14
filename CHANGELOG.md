@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-01-14
+
+### Added
+- Shared state between multiple instances via file-based synchronization
+- Real-time sync indicator showing last synchronization time in TUI
+- Support for running multiple `devserv ui` instances simultaneously
+
+### Fixed
+- Service crash/stop state now properly propagates to all running instances
+- State synchronization between instances updates every second
+
 ## [0.1.0] - 2026-01-14
 
 ### Added
