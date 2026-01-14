@@ -1,0 +1,37 @@
+# DevServ Configuration Example
+# https://github.com/marcelomd/devserv
+#
+# Copy this file to devserv.toml and customize for your project.
+# Run 'devserv init' to generate a fresh config file.
+
+# Backend API (Go)
+[[services]]
+name = "api"
+command = "go run ./cmd/api"
+directory = "./backend"
+port = 8080
+
+# Frontend Development Server (Node.js)
+[[services]]
+name = "frontend"
+command = "npm run dev"
+directory = "./frontend"
+port = 3000
+
+# Background Worker (Python)
+[[services]]
+name = "worker"
+command = "python -m worker"
+directory = "./worker"
+
+# PostgreSQL (Docker Compose)
+[[services]]
+name = "postgres"
+command = "docker compose up postgres"
+port = 5432
+
+# Redis (Docker Compose)
+[[services]]
+name = "redis"
+command = "docker compose up redis"
+port = 6379
