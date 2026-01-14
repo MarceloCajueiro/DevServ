@@ -32,6 +32,15 @@ devserv ui
 
 ## Configuration
 
+DevServ looks for configuration in this order:
+1. `./devserv.toml` (current directory)
+2. `~/.config/devserv/config.toml`
+3. `~/.devserv/config.toml` (global fallback)
+
+You can also specify a config file with `-c /path/to/config.toml`.
+
+### Local Config (per-project)
+
 Create a `devserv.toml` file in your project:
 
 ```toml
@@ -52,6 +61,24 @@ name = "postgres"
 command = "docker compose up postgres"
 port = 5432
 ```
+
+### Global Config
+
+Create `~/.devserv/config.toml` for services you want available everywhere:
+
+```toml
+[[services]]
+name = "redis"
+command = "redis-server"
+port = 6379
+
+[[services]]
+name = "mailhog"
+command = "mailhog"
+port = 8025
+```
+
+Now you can run `devserv start redis` from any directory.
 
 ### Service Options
 

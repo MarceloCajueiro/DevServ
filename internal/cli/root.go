@@ -49,7 +49,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "",
-		"config file (default: ./devserv.toml)")
+		"config file path (default: ./devserv.toml, fallback: ~/.devserv/config.toml)")
 
 	// Add subcommands
 	rootCmd.AddCommand(startCmd)
