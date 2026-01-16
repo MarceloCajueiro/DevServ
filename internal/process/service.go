@@ -394,14 +394,29 @@ func (s *Service) sendEvent(eventType EventType, data interface{}) {
 		return
 	}
 
-	select {
-	case s.eventsCh <- Event{
+	event := Event{
 		Service:   s.config.Name,
 		Type:      eventType,
 		Timestamp: time.Now(),
 		Data:      data,
-	}:
-	default:
-		// Don't block if channel is full
+	}
+
+	// For critical events (started, stopped, crashed), use a timeout to ensure delivery
+	// For output events, don't block as they are high-volume and less critical
+	if eventType == EventOutput {
+		select {
+		case s.eventsCh <- event:
+		default:
+			// Don't block for output events - they are high-volume
+		}
+		return
+	}
+
+	// Critical events: try with a short timeout to avoid losing important state changes
+	select {
+	case s.eventsCh <- event:
+	case <-time.After(100 * time.Millisecond):
+		// Event channel is full for too long - this shouldn't happen in normal operation
+		// but we don't want to block forever
 	}
 }
