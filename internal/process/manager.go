@@ -21,6 +21,10 @@ type Manager struct {
 	stateEventsCh chan Event // Internal channel for state updates
 	state         *state.State
 
+	ctx        context.Context
+	cancelFunc context.CancelFunc
+	wg         sync.WaitGroup
+
 	mu sync.RWMutex
 }
 
@@ -38,6 +42,7 @@ func NewManager(cfg *config.Config) (*Manager, error) {
 	}
 
 	stateEventsCh := make(chan Event, 100)
+	ctx, cancel := context.WithCancel(context.Background())
 
 	m := &Manager{
 		config:        cfg,
@@ -46,6 +51,8 @@ func NewManager(cfg *config.Config) (*Manager, error) {
 		eventsCh:      make(chan Event, 100),
 		stateEventsCh: stateEventsCh,
 		state:         sharedState,
+		ctx:           ctx,
+		cancelFunc:    cancel,
 	}
 
 	// Initialize services and restore state from shared state file
@@ -83,6 +90,7 @@ func NewManager(cfg *config.Config) (*Manager, error) {
 	}
 
 	// Start background goroutine to update state on service events
+	m.wg.Add(1)
 	go m.watchEvents()
 
 	return m, nil
@@ -91,26 +99,44 @@ func NewManager(cfg *config.Config) (*Manager, error) {
 // watchEvents listens for service events and updates shared state accordingly.
 // It also forwards events to the public eventsCh for TUI consumption.
 func (m *Manager) watchEvents() {
-	for event := range m.stateEventsCh {
-		// Update shared state when service stops or crashes
-		switch event.Type {
-		case EventStopped:
-			m.state.SetStopped(event.Service)
-			m.state.Save() // Ignore error, best effort
-		case EventCrashed:
-			errMsg := ""
-			if event.Data != nil {
-				errMsg = fmt.Sprintf("%v", event.Data)
-			}
-			m.state.SetCrashed(event.Service, errMsg)
-			m.state.Save() // Ignore error, best effort
-		}
-
-		// Forward event to public channel for TUI
+	defer m.wg.Done()
+	for {
 		select {
-		case m.eventsCh <- event:
-		default:
-			// Don't block if channel is full
+		case <-m.ctx.Done():
+			return
+		case event, ok := <-m.stateEventsCh:
+			if !ok {
+				return
+			}
+			// Update shared state when service stops or crashes
+			switch event.Type {
+			case EventStopped:
+				m.state.SetStopped(event.Service)
+				m.state.Save() // Ignore error, best effort
+			case EventCrashed:
+				errMsg := ""
+				if event.Data != nil {
+					errMsg = fmt.Sprintf("%v", event.Data)
+				}
+				m.state.SetCrashed(event.Service, errMsg)
+				m.state.Save() // Ignore error, best effort
+			}
+
+			// Forward event to public channel for TUI
+			// Use timeout for critical events, non-blocking for output events
+			if event.Type == EventOutput {
+				select {
+				case m.eventsCh <- event:
+				default:
+					// Don't block for output events - they are high-volume
+				}
+			} else {
+				select {
+				case m.eventsCh <- event:
+				case <-time.After(100 * time.Millisecond):
+					// Channel full for too long - shouldn't happen normally
+				}
+			}
 		}
 	}
 }
@@ -306,7 +332,19 @@ func (m *Manager) Events() <-chan Event {
 
 // Shutdown stops all services and cleans up resources.
 func (m *Manager) Shutdown(ctx context.Context) error {
-	return m.Stop(ctx)
+	err := m.Stop(ctx)
+
+	// Cancel context to stop watchEvents goroutine
+	m.cancelFunc()
+
+	// Close channels
+	close(m.stateEventsCh)
+	close(m.eventsCh)
+
+	// Wait for goroutines to finish
+	m.wg.Wait()
+
+	return err
 }
 
 // ServiceNames returns the names of all configured services.
