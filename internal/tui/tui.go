@@ -19,22 +19,32 @@ func Run(manager *process.Manager) error {
 		tea.WithMouseCellMotion(),
 	)
 
-	// Start background event listener
+	// Start background event listener with proper cleanup
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	done := make(chan struct{})
 
 	go func() {
+		defer close(done)
 		for {
 			select {
 			case <-ctx.Done():
 				return
-			case event := <-manager.Events():
+			case event, ok := <-manager.Events():
+				if !ok {
+					// Channel closed, exit gracefully
+					return
+				}
 				p.Send(ServiceEventMsg{Event: event})
 			}
 		}
 	}()
 
 	_, err := p.Run()
+
+	// Cancel context and wait for goroutine to finish
+	cancel()
+	<-done
+
 	return err
 }
 
