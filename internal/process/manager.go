@@ -327,6 +327,11 @@ func (m *Manager) LogManager() *logs.Manager {
 	return m.logManager
 }
 
+// ConfigPath returns the path to the config file.
+func (m *Manager) ConfigPath() string {
+	return m.config.FilePath()
+}
+
 // StateUpdatedAt returns when the shared state was last updated.
 func (m *Manager) StateUpdatedAt() time.Time {
 	return m.state.UpdatedAt

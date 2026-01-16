@@ -6,18 +6,21 @@ import (
 
 // KeyMap defines all keyboard shortcuts.
 type KeyMap struct {
-	Quit      key.Binding
-	Help      key.Binding
-	Up        key.Binding
-	Down      key.Binding
-	Start     key.Binding
-	Stop      key.Binding
-	Restart   key.Binding
-	StartAll  key.Binding
-	StopAll   key.Binding
-	Logs      key.Binding
-	Back      key.Binding
-	Kill      key.Binding
+	Quit       key.Binding
+	Help       key.Binding
+	Up         key.Binding
+	Down       key.Binding
+	Start      key.Binding
+	Stop       key.Binding
+	Restart    key.Binding
+	StartAll   key.Binding
+	StopAll    key.Binding
+	Logs       key.Binding
+	Back       key.Binding
+	Kill       key.Binding
+	OpenEditor key.Binding
+	OpenConfig key.Binding
+	Reload     key.Binding
 }
 
 // Keys contains the default key bindings.
@@ -70,6 +73,18 @@ var Keys = KeyMap{
 		key.WithKeys("K"),
 		key.WithHelp("K", "force kill"),
 	),
+	OpenEditor: key.NewBinding(
+		key.WithKeys("o"),
+		key.WithHelp("o", "open in editor"),
+	),
+	OpenConfig: key.NewBinding(
+		key.WithKeys("c"),
+		key.WithHelp("c", "edit config"),
+	),
+	Reload: key.NewBinding(
+		key.WithKeys("R"),
+		key.WithHelp("R", "refresh state"),
+	),
 }
 
 // ShortHelp returns key bindings for the short help view.
@@ -84,6 +99,7 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 		{k.Start, k.Stop, k.Restart},
 		{k.StartAll, k.StopAll, k.Kill},
 		{k.Logs, k.Back},
+		{k.OpenConfig, k.Reload},
 		{k.Help, k.Quit},
 	}
 }

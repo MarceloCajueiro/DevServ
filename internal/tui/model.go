@@ -3,6 +3,8 @@ package tui
 import (
 	"context"
 	"fmt"
+	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 
@@ -40,6 +42,7 @@ type Model struct {
 
 	// Logs view state
 	logsService string
+	logFilePath string
 	logEntries  []string
 	logOffset   int
 }
@@ -102,6 +105,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case ErrorMsg:
 		m.err = msg.Err
+		return m, nil
+
+	case ConfigReloadedMsg:
+		if msg.Error != nil {
+			m.setMessage(fmt.Sprintf("✖ Reload failed: %v", msg.Error))
+		} else {
+			m.setMessage("✓ State refreshed")
+		}
+		m.statuses = m.manager.AllStatus()
 		return m, nil
 	}
 
@@ -175,6 +187,12 @@ func (m *Model) handleDashboardKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.viewMode = ViewLogs
 			m.loadLogs()
 		}
+
+	case key.Matches(msg, Keys.OpenConfig):
+		return m, m.openConfigInEditor()
+
+	case key.Matches(msg, Keys.Reload):
+		return m, m.reloadConfig()
 	}
 
 	return m, nil
@@ -188,6 +206,7 @@ func (m *Model) handleLogsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, Keys.Back):
 		m.viewMode = ViewDashboard
 		m.logEntries = nil
+		m.logFilePath = ""
 		m.logOffset = 0
 
 	case key.Matches(msg, Keys.Up):
@@ -202,6 +221,11 @@ func (m *Model) handleLogsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		if m.logOffset < maxOffset {
 			m.logOffset++
+		}
+
+	case key.Matches(msg, Keys.OpenEditor):
+		if m.logFilePath != "" {
+			return m, m.openInEditor()
 		}
 	}
 
@@ -370,7 +394,7 @@ func (m *Model) renderLogs() string {
 	header := TitleStyle.Render(fmt.Sprintf(" Logs: %s ", m.logsService))
 	b.WriteString(header)
 	b.WriteString("\n")
-	b.WriteString(SubtitleStyle.Render("Press ESC to go back, ↑/↓ to scroll"))
+	b.WriteString(SubtitleStyle.Render("ESC back  ↑/↓ scroll  o open in editor"))
 	b.WriteString("\n\n")
 
 	// Log content
@@ -416,6 +440,9 @@ func (m *Model) renderHelp() string {
 		{"X", "Stop all services"},
 		{"K", "Force kill selected service"},
 		{"l/Enter", "View logs"},
+		{"o", "Open log in editor (logs view)"},
+		{"c", "Edit config file"},
+		{"R", "Refresh state"},
 		{"Esc", "Go back"},
 		{"?", "Toggle help"},
 		{"q", "Quit"},
@@ -434,11 +461,14 @@ func (m *Model) renderHelp() string {
 func (m *Model) loadLogs() {
 	m.logEntries = nil
 	m.logOffset = 0
+	m.logFilePath = ""
 
 	logFile, err := m.manager.LogManager().GetLatestLog(m.logsService)
 	if err != nil || logFile == nil {
 		return
 	}
+
+	m.logFilePath = logFile.Path
 
 	reader, err := m.manager.LogManager().CreateReader(logFile.Path, struct {
 		Follow  bool
@@ -469,6 +499,57 @@ func (m *Model) loadLogs() {
 }
 
 // Commands
+
+func (m *Model) openInEditor() tea.Cmd {
+	return tea.ExecProcess(openFileCmd(m.logFilePath), func(err error) tea.Msg {
+		if err != nil {
+			return ErrorMsg{Err: err}
+		}
+		return nil
+	})
+}
+
+func (m *Model) openConfigInEditor() tea.Cmd {
+	configPath := m.manager.ConfigPath()
+	if configPath == "" {
+		return func() tea.Msg {
+			return ErrorMsg{Err: fmt.Errorf("no config file found")}
+		}
+	}
+	return tea.ExecProcess(openFileCmd(configPath), func(err error) tea.Msg {
+		if err != nil {
+			return ErrorMsg{Err: err}
+		}
+		return nil
+	})
+}
+
+// ConfigReloadedMsg is sent when config is reloaded.
+type ConfigReloadedMsg struct {
+	Error error
+}
+
+func (m *Model) reloadConfig() tea.Cmd {
+	return func() tea.Msg {
+		// Refresh state from file to sync with other instances
+		if err := m.manager.RefreshState(); err != nil {
+			return ConfigReloadedMsg{Error: err}
+		}
+		return ConfigReloadedMsg{}
+	}
+}
+
+// openFileCmd returns the command to open a file with the system default editor.
+func openFileCmd(path string) *exec.Cmd {
+	switch runtime.GOOS {
+	case "darwin":
+		return exec.Command("open", path)
+	case "windows":
+		return exec.Command("cmd", "/c", "start", "", path)
+	default: // linux and others
+		return exec.Command("xdg-open", path)
+	}
+}
 
 func (m *Model) tickCmd() tea.Cmd {
 	return tea.Tick(time.Second, func(t time.Time) tea.Msg {

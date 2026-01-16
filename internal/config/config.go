@@ -13,6 +13,7 @@ import (
 // Config represents the root configuration structure.
 type Config struct {
 	Services []Service `toml:"services"`
+	filePath string    // Path to the config file (not serialized)
 }
 
 // Service represents a single service definition.
@@ -35,7 +36,7 @@ func DefaultConfig() *Config {
 func Load(path string) (*Config, error) {
 	if path == "" {
 		var err error
-		path, err = findConfigFile()
+		path, err = FindConfigFile()
 		if err != nil {
 			return nil, err
 		}
@@ -55,11 +56,19 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("invalid configuration: %w", err)
 	}
 
+	// Store the path for later reference
+	cfg.filePath = path
+
 	return &cfg, nil
 }
 
-// findConfigFile searches for a config file in standard locations.
-func findConfigFile() (string, error) {
+// FilePath returns the path to the config file that was loaded.
+func (c *Config) FilePath() string {
+	return c.filePath
+}
+
+// FindConfigFile searches for a config file in standard locations.
+func FindConfigFile() (string, error) {
 	searchPaths := []string{
 		"devserv.toml",
 		"./devserv.toml",
