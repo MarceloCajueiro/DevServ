@@ -74,7 +74,7 @@ func GetStatusStyle(state string) lipgloss.Style {
 	switch state {
 	case "running":
 		return StatusRunning
-	case "starting", "stopping":
+	case "starting", "stopping", "loading":
 		return StatusStarting
 	case "crashed":
 		return StatusCrashed
