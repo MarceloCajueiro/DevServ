@@ -74,44 +74,62 @@ func Load() (*State, error) {
 	return &state, nil
 }
 
-// Save writes the state to file with file locking.
+// Save writes the state to file atomically using write-to-temp-then-rename pattern.
 func (s *State) Save() error {
 	path := StatePath()
+	dir := filepath.Dir(path)
 
 	// Ensure directory exists
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create state directory: %w", err)
 	}
-
-	// Open file with lock
-	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to open state file: %w", err)
-	}
-	defer file.Close()
-
-	// Acquire exclusive lock
-	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX); err != nil {
-		return fmt.Errorf("failed to lock state file: %w", err)
-	}
-	defer syscall.Flock(int(file.Fd()), syscall.LOCK_UN)
 
 	// Update timestamp
 	s.UpdatedAt = time.Now()
 
-	// Write state
+	// Marshal state
 	data, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal state: %w", err)
 	}
 
-	// Truncate and write
-	if err := file.Truncate(0); err != nil {
-		return fmt.Errorf("failed to truncate state file: %w", err)
+	// Write to temporary file in the same directory (for atomic rename)
+	tempFile, err := os.CreateTemp(dir, "state-*.tmp")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %w", err)
 	}
-	if _, err := file.WriteAt(data, 0); err != nil {
-		return fmt.Errorf("failed to write state file: %w", err)
+	tempPath := tempFile.Name()
+
+	// Clean up temp file on error
+	defer func() {
+		if tempPath != "" {
+			os.Remove(tempPath)
+		}
+	}()
+
+	// Write data to temp file
+	if _, err := tempFile.Write(data); err != nil {
+		tempFile.Close()
+		return fmt.Errorf("failed to write temp file: %w", err)
 	}
+
+	// Sync to ensure data is on disk before rename
+	if err := tempFile.Sync(); err != nil {
+		tempFile.Close()
+		return fmt.Errorf("failed to sync temp file: %w", err)
+	}
+
+	if err := tempFile.Close(); err != nil {
+		return fmt.Errorf("failed to close temp file: %w", err)
+	}
+
+	// Atomic rename - this is atomic on POSIX systems
+	if err := os.Rename(tempPath, path); err != nil {
+		return fmt.Errorf("failed to rename temp file to state file: %w", err)
+	}
+
+	// Clear tempPath so defer doesn't try to remove the final file
+	tempPath = ""
 
 	return nil
 }
