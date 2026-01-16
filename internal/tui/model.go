@@ -193,6 +193,9 @@ func (m *Model) handleDashboardKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, Keys.Reload):
 		return m, m.reloadConfig()
+
+	case key.Matches(msg, Keys.OpenEditor):
+		return m, m.openSelectedLogInEditor()
 	}
 
 	return m, nil
@@ -440,7 +443,7 @@ func (m *Model) renderHelp() string {
 		{"X", "Stop all services"},
 		{"K", "Force kill selected service"},
 		{"l/Enter", "View logs"},
-		{"o", "Open log in editor (logs view)"},
+		{"o", "Open log in editor"},
 		{"c", "Edit config file"},
 		{"R", "Refresh state"},
 		{"Esc", "Go back"},
@@ -502,6 +505,27 @@ func (m *Model) loadLogs() {
 
 func (m *Model) openInEditor() tea.Cmd {
 	return tea.ExecProcess(openFileCmd(m.logFilePath), func(err error) tea.Msg {
+		if err != nil {
+			return ErrorMsg{Err: err}
+		}
+		return nil
+	})
+}
+
+func (m *Model) openSelectedLogInEditor() tea.Cmd {
+	if len(m.statuses) == 0 || m.selected >= len(m.statuses) {
+		return nil
+	}
+
+	serviceName := m.statuses[m.selected].Name
+	logFile, err := m.manager.LogManager().GetLatestLog(serviceName)
+	if err != nil || logFile == nil {
+		return func() tea.Msg {
+			return ErrorMsg{Err: fmt.Errorf("no logs available for %s", serviceName)}
+		}
+	}
+
+	return tea.ExecProcess(openFileCmd(logFile.Path), func(err error) tea.Msg {
 		if err != nil {
 			return ErrorMsg{Err: err}
 		}
