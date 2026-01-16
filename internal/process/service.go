@@ -341,8 +341,11 @@ func (s *Service) waitForExit() {
 
 	err := cmd.Wait()
 
+	// Determine event to send before releasing lock
+	var eventType EventType
+	var eventData interface{}
+
 	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	// Close done channel
 	if done != nil {
@@ -362,20 +365,28 @@ func (s *Service) waitForExit() {
 		// Check if it was a graceful stop
 		if s.state == StateStopping {
 			s.state = StateStopped
-			s.sendEvent(EventStopped, nil)
+			eventType = EventStopped
+			eventData = nil
 		} else {
 			s.state = StateCrashed
 			s.error = err.Error()
-			s.sendEvent(EventCrashed, err.Error())
+			eventType = EventCrashed
+			eventData = err.Error()
 		}
 	} else {
 		s.state = StateStopped
 		s.exitCode = 0
-		s.sendEvent(EventStopped, nil)
+		eventType = EventStopped
+		eventData = nil
 	}
 
 	s.cmd = nil
 	s.pid = 0
+
+	s.mu.Unlock()
+
+	// Send event after releasing the lock to avoid potential deadlock
+	s.sendEvent(eventType, eventData)
 }
 
 func (s *Service) sendEvent(eventType EventType, data interface{}) {
