@@ -156,7 +156,7 @@ func (s *Service) Start(ctx context.Context, logManager *logs.Manager) error {
 	s.mu.Lock()
 	if s.state == StateRunning || s.state == StateStarting {
 		s.mu.Unlock()
-		return fmt.Errorf("service %s is already running", s.config.Name)
+		return nil // Already running, no-op
 	}
 
 	s.state = StateStarting

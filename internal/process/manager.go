@@ -144,7 +144,13 @@ func (m *Manager) StartService(ctx context.Context, name string) error {
 		return fmt.Errorf("service not found: %s", name)
 	}
 
-	// Check port availability
+	// Check if already running - return early without error
+	status := svc.Status()
+	if status.State == StateRunning || status.State == StateStarting {
+		return nil
+	}
+
+	// Check port availability only when service is not running
 	if svc.Config().Port > 0 {
 		if err := checkPort(svc.Config().Port); err != nil {
 			return fmt.Errorf("port %d is not available for service %s: %w", svc.Config().Port, name, err)
@@ -156,7 +162,7 @@ func (m *Manager) StartService(ctx context.Context, name string) error {
 	}
 
 	// Update shared state
-	status := svc.Status()
+	status = svc.Status()
 	m.state.SetRunning(name, status.PID, status.Port, status.LogFile)
 	if err := m.state.Save(); err != nil {
 		// Log error but don't fail the start

@@ -315,10 +315,16 @@ func TestServiceAlreadyRunning(t *testing.T) {
 		t.Fatalf("failed to start service: %v", err)
 	}
 
-	// Try to start again
+	// Try to start again - should be a no-op (no error)
 	err = svc.Start(ctx, logManager)
-	if err == nil {
-		t.Error("expected error when starting already running service")
+	if err != nil {
+		t.Errorf("expected no error when starting already running service, got: %v", err)
+	}
+
+	// Verify service is still running
+	status := svc.Status()
+	if status.State != StateRunning {
+		t.Errorf("expected state Running, got %v", status.State)
 	}
 
 	// Cleanup
