@@ -83,6 +83,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.stateUpdatedAt = time.Now() // Track when we last synced
 		}
 		m.statuses = m.manager.AllStatus()
+		// Ensure selected index is still valid after status refresh
+		if m.selected >= len(m.statuses) && len(m.statuses) > 0 {
+			m.selected = len(m.statuses) - 1
+		} else if len(m.statuses) == 0 {
+			m.selected = 0
+		}
 		// Clear expired messages
 		if !m.msgExpiry.IsZero() && time.Now().After(m.msgExpiry) {
 			m.message = ""
@@ -212,6 +218,12 @@ func (m *Model) handleServiceEvent(event process.Event) {
 		m.setMessage(fmt.Sprintf("✖ %s crashed", event.Service))
 	}
 	m.statuses = m.manager.AllStatus()
+	// Ensure selected index is still valid after status change
+	if m.selected >= len(m.statuses) && len(m.statuses) > 0 {
+		m.selected = len(m.statuses) - 1
+	} else if len(m.statuses) == 0 {
+		m.selected = 0
+	}
 }
 
 func (m *Model) setMessage(msg string) {
