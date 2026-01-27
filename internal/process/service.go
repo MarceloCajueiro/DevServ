@@ -269,33 +269,101 @@ func (s *Service) Stop(ctx context.Context) error {
 	pid := s.pid
 	s.mu.Unlock()
 
-	if cmd == nil || cmd.Process == nil {
+	// No PID means nothing to stop
+	if pid <= 0 {
+		s.mu.Lock()
+		s.state = StateStopped
+		s.mu.Unlock()
 		return nil
 	}
 
-	// Send SIGTERM to the process group (negative PID)
-	// This kills all child processes as well
+	// If we have a cmd, we own this process and have a done channel to wait on
+	if cmd != nil && cmd.Process != nil {
+		// Send SIGTERM to the process group (negative PID)
+		// This kills all child processes as well
+		if err := syscall.Kill(-pid, syscall.SIGTERM); err != nil {
+			// Process might have already exited
+			if err != syscall.ESRCH {
+				return fmt.Errorf("failed to send SIGTERM: %w", err)
+			}
+		}
+
+		// Wait for process to exit or timeout
+		select {
+		case <-done:
+			return nil
+		case <-ctx.Done():
+			// Force kill the process group
+			if err := syscall.Kill(-pid, syscall.SIGKILL); err != nil {
+				if err != syscall.ESRCH {
+					return fmt.Errorf("failed to send SIGKILL: %w", err)
+				}
+			}
+			<-done
+			return nil
+		}
+	}
+
+	// This is a restored process (we have PID but no cmd) - kill it by PID
+	// Try SIGTERM to process group first
 	if err := syscall.Kill(-pid, syscall.SIGTERM); err != nil {
-		// Process might have already exited
-		if err != syscall.ESRCH {
+		// If process group kill fails, try killing just the process
+		if err == syscall.ESRCH {
+			// Process already dead
+			s.mu.Lock()
+			s.state = StateStopped
+			s.pid = 0
+			s.mu.Unlock()
+			return nil
+		}
+		// Try killing just the process (not the group)
+		if err := syscall.Kill(pid, syscall.SIGTERM); err != nil {
+			if err == syscall.ESRCH {
+				s.mu.Lock()
+				s.state = StateStopped
+				s.pid = 0
+				s.mu.Unlock()
+				return nil
+			}
 			return fmt.Errorf("failed to send SIGTERM: %w", err)
 		}
 	}
 
-	// Wait for process to exit or timeout
-	select {
-	case <-done:
-		return nil
-	case <-ctx.Done():
-		// Force kill the process group
-		if err := syscall.Kill(-pid, syscall.SIGKILL); err != nil {
-			if err != syscall.ESRCH {
-				return fmt.Errorf("failed to send SIGKILL: %w", err)
-			}
+	// Wait for process to exit with polling (we don't have a done channel)
+	deadline := time.Now().Add(config.DefaultShutdownTimeout)
+	for time.Now().Before(deadline) {
+		// Check if process is still alive
+		if err := syscall.Kill(pid, 0); err == syscall.ESRCH {
+			// Process is dead
+			s.mu.Lock()
+			s.state = StateStopped
+			s.pid = 0
+			s.mu.Unlock()
+			return nil
 		}
-		<-done
-		return nil
+		select {
+		case <-ctx.Done():
+			// Context cancelled, force kill
+			syscall.Kill(-pid, syscall.SIGKILL)
+			syscall.Kill(pid, syscall.SIGKILL)
+			s.mu.Lock()
+			s.state = StateStopped
+			s.pid = 0
+			s.mu.Unlock()
+			return nil
+		case <-time.After(100 * time.Millisecond):
+			// Continue polling
+		}
 	}
+
+	// Timeout - force kill
+	syscall.Kill(-pid, syscall.SIGKILL)
+	syscall.Kill(pid, syscall.SIGKILL)
+	s.mu.Lock()
+	s.state = StateStopped
+	s.pid = 0
+	s.mu.Unlock()
+	return nil
 }
 
 // Kill forcefully terminates the service.
